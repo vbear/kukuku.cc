@@ -6,8 +6,10 @@
   "keywords": [],
   "dependencies": {
     "MD5": "^1.2.1",
+    "amqp": "^0.2.0",
     "async": "^0.9.0",
-    "connect-redis": "^1.4.5",
+    "bluebird": "^2.8.2",
+    "connect-redis": "1.4.5",
     "ejs": "~0.8.4",
     "ftp": "^0.3.7",
     "geetest": "^0.1.2",

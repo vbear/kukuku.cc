@@ -6,6 +6,7 @@
   "keywords": [],
   "dependencies": {
     "MD5": "^1.2.1",
+    "bluebird": "^2.8.2",
     "connect-redis": "^1.4.5",
     "cookie-signature": "^1.0.5",
     "ejs": "~0.8.4",
@@ -43,6 +44,6 @@
     "type": "git",
     "url": "git://github.com/anonymous node/sails user/h.acfun.tv.front.git"
   },
-    "author": "Akino Mizuho.Koukuko",
+  "author": "Akino Mizuho.Koukuko",
   "license": ""
 }
