@@ -24,7 +24,7 @@ module.exports = function notFound(data) {
     var res = this.res;
     var sails = req._sails;
 
-    req.wantType = sails.services.utility.checkWantType(req.params.format);
+    req.wantType = sails.services.tool.checkWantType(req.params.format);
 
     // Set status code
     res.status(404);

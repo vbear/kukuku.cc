@@ -7,9 +7,6 @@
 
 module.exports = {
 
-    // DEV ONLY!
-    migrate: 'alter',
-
     attributes: {
 
         filename: {
@@ -37,6 +34,7 @@ module.exports = {
         url: {
             type: 'url'
         }
+
     }
 
 

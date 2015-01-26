@@ -13,7 +13,7 @@ div.h-threads-container(id='threads_'+item.id,style='padding:0')
         if item.lock
             span.h-badge.uk-badge.uk-badge-danger 已锁定
         | &nbsp;
-        span.h-threads-time=sails.services.utility.unix_to_datetime(item.createdAt)
+        span.h-threads-time=sails.services.tool.unix_to_datetime(item.createdAt)
         span.h-threads-uid!='ID: '+item.uid
     +image(item.thumb,item.image)
     p.h-threads-content!=item.content

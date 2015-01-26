@@ -7,8 +7,6 @@
 
 module.exports = {
 
-    migrate:'alter',
-
     attributes: {
         deviceToken: {
             type: 'string',

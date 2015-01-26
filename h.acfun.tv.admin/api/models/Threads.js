@@ -7,9 +7,6 @@
 
 module.exports = {
 
-    // DEV ONLY!
-    migrate: 'alter',
-
     autoUpdatedAt: false,
 
     attributes: {
@@ -74,7 +71,6 @@ module.exports = {
         updatedAt: {
             type: 'datetime'
         }
-
     }
 
 };

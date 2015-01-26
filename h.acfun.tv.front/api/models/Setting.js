@@ -29,10 +29,10 @@ module.exports = {
                     // 对配置进行处理
                     var handledSettings = {};
 
-                    for (var i in rawSettings) {
-                        var item = rawSettings[i];
+                    _.forEach(rawSettings,function(item){
                         handledSettings[item.key] = item.value;
-                    }
+                    });
+
                     resolve(handledSettings)
                 })
                 .catch(reject)

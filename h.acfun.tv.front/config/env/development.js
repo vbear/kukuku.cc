@@ -10,39 +10,4 @@
  *
  */
 
-module.exports = {
-
-    cache : false,
-
-    jsonp: true,
-
-    session: {
-        host: '10.232.0.13'
-    },
-
-    models: {
-        migrate: 'safe'
-    },
-
-    connections: {
-        ftpServer:{
-            host:'10.232.0.38',
-            port:21,
-            user:'root',
-            password:'123456'
-        },
-        mysqlServer: {
-            adapter: 'sails-mysql',
-            host: '10.232.0.38',
-            user: 'root',
-            password: '',
-            database: 'h.acfun.tv'
-        },
-        redisServer: {
-            host: '10.232.0.13',
-            port: 6379,
-            database: 7
-        }
-    }
-
-};
+module.exports = require('../../../config.development.js');

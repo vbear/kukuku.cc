@@ -1,10 +1,8 @@
 /**
- * 缓存控制
+ * Services : Cache
+ * sails.services.cache
  *
- * @key type:value:format:version
- *
+ * @require redis
  */
 
-var CacheServices = require('../../../h.acfun.tv.front/api/services/Cache');
-
-module.exports = CacheServices;
+module.exports = require('../../../h.acfun.tv.front/api/services/Cache');

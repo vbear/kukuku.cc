@@ -34,6 +34,7 @@ module.exports = {
                 break;
             case 'desktop':
             default:
+                result.param = 'desktop';
                 result.isDesktop = true;
                 result.suffix = ':desktop';
                 break;

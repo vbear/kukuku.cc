@@ -9,87 +9,42 @@
  * http://sailsjs.org/#/documentation/reference/sails.config/sails.config.bootstrap.html
  */
 
-module.exports.bootstrap = function (cb) {
+module.exports.bootstrap = function (standBy) {
 
-    sails.log.info('h.acfun.tv - When i wish upon a star');
+    global.H = {};  // 准备弃用全局变量缓存，将缓存全部寄予Cache
 
-    // 将常用依赖导入全局
+    // Require Lib.
+    global.Promise = require("bluebird");
+    Promise.promisifyAll(require("redis"));
+    global.redis = require('redis');
+    global.request = require('request');
+
+    // 将会弃用的库
     global.Q = require("q");
     global.md5 = require('MD5');
-    global.ipm2 = require('pm2-interface')();
-    global.json2xml = require('json2xml');
 
-    global.H = {};
-
-    // Redis 初始化
-    var redis = require("redis"),
-        client = redis.createClient(sails.config.connections.redisServer.port, sails.config.connections.redisServer.host);
-
-    client.select(sails.config.connections.redisServer.database, function () {
-
-        global.redis = client;
-
-        // 配置与缓存初次同步
-        syncSetting();
-        sails.models.filter.exportToGlobal();
-
-        // 版块列表同步
-        sails.models.forum.initialize()
-            .then(function(){
-                // PM2 进程间RPC通讯初始化
-                if (process.send) {
-
-                    sails.log.info('使用了PM2 RPC进行通讯，完成连接后将会自动启动程序。');
-
-                    process.on('message',function(message){
-                        if(message && _.isObject(message)){
-                            switch(message.type){
-
-                                case 'h:update:setting':
-                                    syncSetting();
-                                    break;
-
-                                case 'h:update:filter':
-                                    sails.models.filter.exportToGlobal();
-                                    break;
-
-                                case 'h:update:forum':
-                                    sails.models.forum.initialize();
-                                    break;
-
-                                case 'h:update:forum:topicCount':
-                                    if(message.forum){
-                                        if(sails.models.forum.list[sails.models.forum.findForumById(message.forum)])
-                                            sails.models.forum.list[sails.models.forum.findForumById(message.forum)]['topicCount']++;
-                                    }
-                                    break;
-
-                            }
-                        }
-                    });
-
-                    cb();
-
-                } else {
-                    sails.log.info('没有通过PM2启动程序，如果采用了多进程启动方式，那么数据缓存和配置可能不会同步生效。');
-                    cb();
-                }
-            })
-            .fail(function(){
-                sails.log.error(err);
-            });
-    });
-
-};
+    sails.log.ship = null;
+    sails.log('--------------------------------------------------------'.grey);
+    sails.log.info('AC匿名版 - When i wish upon a star');
+    sails.log('--------------------------------------------------------'.grey);
+    sails.log.blank();
 
 
-// 同步配置
-function syncSetting() {
-    sails.models.setting.exportToGlobal()
-        .then(function (settings) {
+    // 初始化模块
+    sails.services.cache.install()
+        .then(sails.services.cluster.install)
+        .then(function(){
+            return sails.services.cluster.subscribe(require('./event/mq'));
+        })
+        .then(sails.models.setting.findAll)
+        .then(function(settings){
             H.settings = settings;
         })
-        .fail(function (err) {
+        .then(function(){
+            standBy();
+        })
+        .catch(function(err){
             sails.log.error(err);
         });
-}
+
+};

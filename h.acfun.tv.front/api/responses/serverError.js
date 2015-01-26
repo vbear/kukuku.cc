@@ -19,12 +19,13 @@ module.exports = function serverError(data) {
     var res = this.res;
     var sails = req._sails;
 
-    req.wantType = sails.services.utility.checkWantType(req.params.format);
+    req.wantType = sails.services.tool.checkWantType(req.params.format);
 
     // Set status code
     res.status(500);
 
     // Log error to console
+    sails.log.error('Error Url:',req.url);
     if (data !== undefined) {
         sails.log.error('Sending 500 ("Server Error") response: \n', data);
     }

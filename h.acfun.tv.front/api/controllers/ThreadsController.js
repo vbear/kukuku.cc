@@ -27,7 +27,7 @@ module.exports = {
         // 翻页
         var pageIndex = (req.query.page && req.query.page == 'last') ? 'last' : ( Number(req.query.page) || 1 );
 
-        req.wantType = sails.services.utility.checkWantType(req.params.format);
+        req.wantType = sails.services.tool.checkWantType(req.params.format);
         req.cacheKey = 'threads:' + threadsId + ':' + pageIndex + ':' + req.wantType.suffix;
 
         sails.services.cache.get(req.cacheKey)
@@ -312,7 +312,7 @@ module.exports = {
     // 引用查看
     ref: function (req, res) {
 
-        req.wantType = sails.services.utility.checkWantType(req.params.format);
+        req.wantType = sails.services.tool.checkWantType(req.params.format);
 
         var threadsId = Number(req.query.tid);
         if (!threadsId) {

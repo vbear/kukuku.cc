@@ -18,7 +18,7 @@ module.exports = function sendOK(data,etc) {
     var res = this.res;
     var sails = req._sails;
 
-    req.wantType = sails.services.utility.checkWantType(req.params.format);
+    req.wantType = sails.services.tool.checkWantType(req.params.format);
 
     sails.log.silly('res.ok() :: Sending 200 ("OK") response');
 

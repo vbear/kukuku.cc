@@ -5,55 +5,29 @@
  * @description    :: 首页
  */
 
-//var signature = require('cookie-signature');
-
 module.exports = {
 
     /**
      * 首页
+     * @route /homepage
      * @key homepage:index:{$format}
      */
     index: function (req, res) {
 
-        req.wantType = sails.services.utility.checkWantType(req.params.format);
-        req.cacheKey ='homepage:index:' + req.wantType.suffix;
-
-        // 0.1 确认是否需要跳转
-
-        if(req.query.switch){
-            if(req.query.switch == 'true'){
-                req.session.wantMobile = 'true';
-                return res.redirect('/.mobile');
-            } else if(req.query.switch == 'false'){
-                req.session.wantMobile = 'false';
-            }
-        }
-
-        // 提前判断mobile/desktop
-        if(
-            req.wantType.isDesktop &&
-            sails.services.utility.isMobile(req.headers['user-agent'])
-        ){
-            if(typeof req.session.wantMobile == 'undefined'){
-                return res.redirect('/homepage/switchType');
-            } else if(req.session.wantMobile == 'true') {
-                return res.redirect('/.mobile');
-            }
-        }
+        req.wantType = sails.services.tool.checkWantType(req.params.format);
+        req.cacheKey = 'homepage:index' + req.wantType.suffix;
 
         sails.services.cache.get(req.cacheKey)
             .then(function (cache) {
 
-                if(req.wantType.param == 'json'){
+                if (req.wantType.param == 'json') {
                     return sails.config.jsonp ? res.jsonp(JSON.parse(cache)) : res.json(JSON.parse(cache));
-                } else if(req.wantType.param == 'xml'){
-                    res.set('Content-Type','text/xml');
+                } else {
+                    return res.send(200, cache);
                 }
 
-                res.send(200, cache);
-
             })
-            .fail(function () {
+            .catch(function () {
 
                 var data = {
                     page: {
@@ -63,7 +37,7 @@ module.exports = {
                     success: true
                 };
 
-                return res.generateResult(data,{
+                return res.generateResult(data, {
                     desktopView: 'desktop/homepage/index',
                     mobileView: 'mobile/homepage/index'
                 });
@@ -76,12 +50,12 @@ module.exports = {
      * @param req
      * @param res
      */
-    switchType: function(req,res) {
+    switchType: function (req, res) {
 
 
         return res.render('mobile/homepage/switch', {
-            page:{
-                title:'切换'
+            page: {
+                title: '切换'
             }
         }, function (err, html) {
             if (err) {
@@ -94,86 +68,71 @@ module.exports = {
 
     /**
      * 版块列表
-     * TODO：需要修改
+     * @route /homepage/menu
+     * @key homepage:index:{$format}
      */
     menu: function (req, res) {
 
-        var key = 'homepage:menu';
+        req.wantType = sails.services.tool.checkWantType(req.params.format);
+        req.cacheKey = 'homepage:menu' + req.wantType.suffix;
 
-        // API
-        var isAPI = (req.params.format && req.params.format == 'json') ? true : false;
-
-        if (isAPI) {
-            key += ':api';
-        }
-
-        sails.services.cache.get(key)
+        sails.services.cache.get(req.cacheKey)
             .then(function (cache) {
 
-                if(isAPI){
-                    return res.json(JSON.parse(cache));
+                if (req.wantType.param == 'json') {
+                    return sails.config.jsonp ? res.jsonp(JSON.parse(cache)) : res.json(JSON.parse(cache));
+                } else {
+                    return res.send(200, cache);
                 }
-
-                res.send(200, cache);
 
             })
             .fail(function () {
 
-                if(isAPI){
+                var data = {
+                    page: {
+                        title: '版块列表'
+                    },
+                    code: 200,
+                    success: true
+                };
 
-                    var output = {
-                        success:true,
-                        forum:{}
-                    };
+                sails.models.forum.find()
+                    .then(function (rawForums) {
 
-                    sails.models.forum.find()
-                        .then(function(rawForums){
-
-                            for (var i in rawForums){
-                                rawForums[i]['createdAt'] = (rawForums[i]['createdAt']) ? new Date(rawForums[i]['createdAt']).getTime() : null;
-                                rawForums[i]['updatedAt'] = (rawForums[i]['updatedAt']) ? new Date(rawForums[i]['updatedAt']).getTime() : null;
-                            }
-
-                            output.forum = rawForums;
-
-                            sails.services.cache.set(key, output);
-                            return res.json(output);
-
-                        })
-                        .fail(function(err){
-                            return res.serverError(err);
+                        var handledForums = [];
+                        _(rawForums).forEach(function(forum){
+                            forum['createdAt'] = (forum['createdAt']) ? new Date(forum['createdAt']).getTime() : null;
+                            forum['updatedAt'] = (forum['updatedAt']) ? new Date(forum['updatedAt']).getTime() : null;
+                            handledForums.push(forum)
                         });
 
-                } else {
-                    res.render('homepage/menu', {
-                        page: {
-                            title: '版块列表'
-                        }
-                    }, function (err, html) {
+                        data.forum = handledForums;
 
-                        if (err) {
-                            return res.serverError(err);
-                        }
+                        return res.generateResult(data, {
+                            desktopView: 'desktop/homepage/menu',
+                            mobileView: 'mobile/homepage/menu'
+                        });
 
-                        sails.services.cache.set(key, html);
-                        res.send(200, html);
+                    })
+                    .catch(function (err) {
+                        return res.serverError(err);
                     });
-                }
 
             });
+
     },
 
     /**
      * /homepage/isManager
      */
-    isManager:function(req,res){
+    isManager: function (req, res) {
 
         var result = {
             success: false
         };
 
         if (req.signedCookies.managerId) {
-            result.success= true;
+            result.success = true;
         }
 
         res.json(result);
@@ -183,11 +142,11 @@ module.exports = {
     /**
      * 搜索
      */
-    search:function(req,res){
+    search: function (req, res) {
 
 
-        req.wantType = sails.services.utility.checkWantType(req.params.format);
-        req.cacheKey ='homepage:search:' + req.wantType.suffix;
+        req.wantType = sails.services.tool.checkWantType(req.params.format);
+        req.cacheKey = 'homepage:search:' + req.wantType.suffix;
 
         var data = {
             page: {
@@ -197,37 +156,11 @@ module.exports = {
             success: true
         };
 
-        return res.generateResult(data,{
+        return res.generateResult(data, {
             desktopView: 'desktop/homepage/search',
             mobileView: 'mobile/homepage/search'
         });
 
     }
-
-    /**
-     * 生成饼干
-     */
-//    generateUserId: function(req,res){
-//        if (H.settings.cookieSignup == 'true' || (req.signedCookies && req.signedCookies.managerId)) {
-//
-//            // 生成饼干
-//            var char = "0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM";
-//            var seed = new Date().getTime();
-//            var userId = "";
-//            for (var i = 0; i < 8; i++) {
-//                userId += char.charAt(Math.ceil(Math.random() * seed) % char.length);
-//            }
-//            userId = 's:' + signature.sign(userId,req.secret);
-//            res.cookie('userId', userId, { maxAge: Number(H.settings.cookieExpires), signed: true });
-//            return res.json({code:200,success:true,userId:userId});
-//
-//
-//        } else {
-//
-//            // 没有饼干
-//            return res.json({code:403,success:false});
-//
-//        }
-//    }
 
 };

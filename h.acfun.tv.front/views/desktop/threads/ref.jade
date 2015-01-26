@@ -12,7 +12,7 @@ div.h-threads-item
                     a.h-threads-info-email(href='mailto:'+reply.email)= (reply.name) ? reply.name : '无名氏'
                 else
                     span.h-threads-info-email= (reply.name) ? reply.name : '无名氏'
-                span.h-threads-info-createdat=sails.services.utility.unix_to_datetime(reply.createdAt)
+                span.h-threads-info-createdat=sails.services.tool.unix_to_datetime(reply.createdAt)
                 span.h-threads-info-uid!='ID:'+reply.uid
                 span.h-threads-info-report-btn
                     | [

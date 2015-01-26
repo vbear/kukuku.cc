@@ -8,7 +8,7 @@ module.exports = {
 
     index: function (req, res) {
 
-        req.wantType = sails.services.utility.checkWantType(req.params.format);
+        req.wantType = sails.services.tool.checkWantType(req.params.format);
 
         var page = parseInt(req.query.page) || 1;
         var pagesize = parseInt(req.query.pagesize) || 20;

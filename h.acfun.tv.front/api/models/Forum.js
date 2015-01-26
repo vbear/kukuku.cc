@@ -20,6 +20,15 @@ module.exports = {
             required: true,
             defaultsTo: false
         },
+        close: {
+            type: 'boolean',
+            required: true,
+            defaultsTo: false
+        },
+        index: {
+            type: 'array',
+            defaultsTo: ['',0]
+        },
         cooldown: {
             type: 'int',
             required: true,
@@ -28,109 +37,115 @@ module.exports = {
     },
 
     /**
-     * 初始化版块列表
+     * 通过ID获取单个版块信息
+     * @param id 版块ID
+     * @returns {Promise}
      */
-    initialize: function () {
-
-        var deferred = Q.defer();
-
-        sails.models.forum.find()
-            .exec(function (err, rawForums) {
-                if (err) {
-                    deferred.reject(err);
-                } else {
-
-                    var handledForum = {};
-                    var handledForumId = {};
-                    var forumSelectList = [
-                        {
-                            key: '未选择',
-                            value: ''
-                        }
-                    ];
-
-                    for (var i in rawForums) {
-
-                        var forum = rawForums[i];
-
-                        if (forum) {
-                            if(forum.header){
-                                forum.header = forum.header.replace('@time',forum.cooldown).replace('@name',forum.name);
-                            }
-                            forum.version = _.random(100, 999);
-                            handledForum[forum.name] = forum;
-                            handledForumId[forum.id] = forum.name;
-                            forumSelectList.push({
-                                key: forum.name,
-                                value: forum.id
-                            })
-                        }
-                    }
-
-                    sails.models.threads.query("select forum,count(forum) as `count` from threads group by forum", function (err, threadsCounts) {
-                        if (err || !threadsCounts) {
-                            deferred.reject(err);
-                        } else {
-                            for (var i in threadsCounts) {
-                                var threadsCount = threadsCounts[i];
-                                if (handledForum[handledForumId[threadsCount.forum]])
-                                    handledForum[handledForumId[threadsCount.forum]]['topicCount'] = threadsCount.count;
-                            }
-
-
-                            sails.models.forum.list = handledForum;
-                            sails.models.forum.idList = handledForumId;
-                            sails.models.forum.selectList = forumSelectList;
-                            deferred.resolve(handledForum);
-                        }
-                    });
-                }
-            });
-
-        return deferred.promise;
-    },
-
     findForumById: function (id) {
-        return sails.models.forum.list[sails.models.forum.idList[id]];
-    },
 
-    findForumByName: function (name) {
-        return sails.models.forum.list[name];
+        // id仅作为aliasesCacheKey重定向至findForumByName(因为findForumByName访问次数更多)
+        return new Promise(function (resolve, reject) {
+
+            if(!id){
+                return reject('版块ID不合法')
+            }
+
+            var aliasesCacheKey = 'forum:id:' + id;
+
+            // 通过缓存获得forum.name重新请求
+            sails.services.cache.get(aliasesCacheKey)
+                .then(sails.models.forum.findForumByName)
+                .then(resolve)
+                .catch(function () {
+                    sails.models.forum.findOne()
+                        .where({id: id})
+                        .then(function (forum) {
+
+                            resolve(forum);
+
+                            // 缓存实体请求
+                            var cacheKey = 'forum:name:' + encodeURIComponent(forum.name) + ':json';
+                            return sails.services.cache.set(cacheKey, forum);
+                        })
+                        .then(function (forum) {
+                            // 缓存别名请求
+                            return sails.services.cache.set(aliasesCacheKey, forum.name);
+                        })
+                        .catch(reject);
+                });
+
+        });
+
     },
 
     /**
-     * 通知集群版块已更新
+     * 通过版块名获取版块信息
+     * @param name 版块名
+     * @returns {Promise}
      */
-    afterCreate: function(newlyInsertedRecord, cb) {
+    findForumByName: function (name) {
 
-        sails.models.forum.noticeUpdate();
+        return new Promise(function (resolve, reject) {
 
-        cb();
+            if(!name){
+                return reject('版块名不合法')
+            }
+
+            var cacheKey = 'forum:name:' + encodeURIComponent(name) + ':json';  // 避免数据传输中出现问题cacheKey中的中文encode
+
+            // 直接通过cacheKey获得实体
+            sails.services.cache.get(cacheKey)
+                .then(resolve)
+                .catch(function () {
+                    sails.models.forum.findOne()
+                        .where({name: name})
+                        .then(function (forum) {
+
+                            resolve(forum);
+
+                            // 缓存实体请求
+                            return sails.services.cache.set(cacheKey, forum);
+                        })
+                        .then(function (forum) {
+
+                            // 缓存别名请求
+                            var aliasesCacheKey = 'forum:id:' + forum.id;
+                            return sails.services.cache.set(aliasesCacheKey, forum.name);
+                        })
+                        .catch(reject);
+                });
+
+        });
     },
 
-    afterUpdate: function(updatedRecord, cb) {
+    /**
+     * 获取版块主串数目
+     * @param id 版块ID
+     * @returns {Promise}
+     */
+    getTopicCount: function(id){
 
-        sails.models.forum.noticeUpdate();
+        return new Promise(function (resolve, reject) {
 
-        cb();
-    },
+            if(!id){
+                return reject('版块ID不合法')
+            }
 
-    afterDestroy: function(destroyedRecords, cb) {
+            var cacheKey = 'forum:id:'+ id + ':count';
 
-        sails.models.forum.noticeUpdate();
+            sails.services.cache.get(cacheKey)
+                .then(resolve)
+                .catch(function(){
 
-        cb();
-    },
+                    sails.models.threads.count()
+                        .where({forum: id,parent: 0})
+                        .then(resolve)
+                        .catch(reject);
 
-    noticeUpdate:function(){
-        if(ipm2.rpc.msgProcess){
-            sails.log.silly('try send message to process(h.acfun.tv.front) - forum');
-            ipm2.rpc.msgProcess({name:"h.acfun.tv.front", msg:{type:"h:update:forum"}}, function (err, res) {
-                if(err){
-                    sails.log.error(err);
-                }
-            });
-        }
+                });
+
+        });
+
     }
 
 };

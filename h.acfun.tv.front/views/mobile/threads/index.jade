@@ -55,7 +55,7 @@ block content
             if item.lock
                 span.h-badge.uk-badge.uk-badge-danger 已锁定
         p.h-threads-second-col
-            span.h-threads-time=sails.services.utility.unix_to_datetime(item.createdAt)
+            span.h-threads-time=sails.services.tool.unix_to_datetime(item.createdAt)
             span.h-threads-uid!='ID: '+item.uid
         +image(item.thumb,item.image)
         p.h-threads-content!=item.content
@@ -69,7 +69,7 @@ block content
                             span.h-threads-name=(reply.name) ? reply.name : '无名氏'
                             a.h-threads-id(href='/t/'+item.id+'.mobile?r='+reply.id)= 'No.' + reply.id
                         p.h-threads-second-col
-                            span.h-threads-time=sails.services.utility.unix_to_datetime(reply.createdAt)
+                            span.h-threads-time=sails.services.tool.unix_to_datetime(reply.createdAt)
                             span.h-threads-uid!='ID: '+reply.uid
                         +image(reply.thumb,reply.image)
                         p.h-threads-content!=reply.content

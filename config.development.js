@@ -24,7 +24,7 @@ module.exports = {
             password: 'root'
         },
         mysqlServer: {
-            adapter: 'sails-mysql-plus',
+            adapter: 'sails-mysql',
             host: '10.232.0.26',
             user: 'root',
             password: 'root',
