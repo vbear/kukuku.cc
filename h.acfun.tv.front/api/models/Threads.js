@@ -5,7 +5,7 @@
  */
 var fs = require('fs'),
     path = require('path'),
-    gm = require('gm').subClass({ imageMagick: true });
+    gm = require('gm').subClass({imageMagick: true});
 
 module.exports = {
 
@@ -62,6 +62,10 @@ module.exports = {
             type: 'int',
             required: true
         },
+        top: {
+            type: 'int',
+            defaultsTo: 0
+        },
         parent: {
             type: 'int',
             defaultsTo: 0
@@ -93,9 +97,9 @@ module.exports = {
         page = Math.ceil(page);
 
         sails.models.threads.find()
-            .where({ forum: forumId, parent: 0 })
+            .where({forum: forumId, parent: 0})
             .sort('updatedAt DESC')
-            .paginate(({ page: page, limit: 10 }))
+            .paginate(({page: page, limit: 10}))
             .then(function (threads) {
 
                 var result = {};
@@ -154,9 +158,9 @@ module.exports = {
         page = Math.ceil(page);
 
         sails.models.threads.find()
-            .where({ parent: threadsId})
+            .where({parent: threadsId})
             .sort('updatedAt ASC')
-            .paginate(({ page: page, limit: 20 }))
+            .paginate(({page: page, limit: 20}))
             .then(function (threads) {
                 deferred.resolve(threads);
             })
@@ -181,8 +185,8 @@ module.exports = {
             deferred.resolve({image: '', thumb: ''});
             return deferred.promise;
         }
-        
-        if (H.settings.allowUpload && H.settings.allowUpload == 'false'){
+
+        if (H.settings.allowUpload && H.settings.allowUpload == 'false') {
             deferred.reject('系统暂时禁止了上传图片，请取消附件再重新发串。');
             return deferred.promise;
         }
@@ -377,7 +381,7 @@ module.exports = {
         }
         sails.services.cache.update('forum:' + newlyInsertedRecord.forum);
 
-        if(newlyInsertedRecord.parent == 0){
+        if (newlyInsertedRecord.parent == 0) {
             sails.models.threads.noticeUpdate(newlyInsertedRecord.forum);
         }
 
@@ -423,11 +427,14 @@ module.exports = {
 
     },
 
-    noticeUpdate:function(forum){
-        if(ipm2.rpc.msgProcess){
+    noticeUpdate: function (forum) {
+        if (ipm2.rpc.msgProcess) {
             sails.log.silly('try send message to process(h.acfun.tv.front) - threads++ ');
-            ipm2.rpc.msgProcess({name:"h.acfun.tv.front", msg:{type:"h:update:forum:topicCount",forum:forum}}, function (err, res) {
-                if(err){
+            ipm2.rpc.msgProcess({
+                name: "h.acfun.tv.front",
+                msg: {type: "h:update:forum:topicCount", forum: forum}
+            }, function (err, res) {
+                if (err) {
                     sails.log.error(err);
                 }
             });

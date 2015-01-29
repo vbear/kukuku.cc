@@ -69,7 +69,7 @@ var cache = {
                     cache.connection.get(key, function (err, value) {
 
                         if(value === null){
-                            return reject('缓存键值为NULL');
+                            return reject(null);
                         }
 
                         if(key.indexOf(':json') >= 0 ){

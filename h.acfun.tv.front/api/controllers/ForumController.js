@@ -17,99 +17,148 @@ module.exports = {
 
         var result = {
             forum: {},
-            page: {}
+            data: {},
+            page: {},
+            code: 200,
+            success: true
         };
 
         sails.models.forum.findForumByName(req.params.forum)
-            .then(function(forum){
+            .then(function (forum) {
+
+                if (!forum || !forum.name) {
+                    return res.notFound('版块不存在');
+                }
+
+                if (forum.close) {
+                    return res.notFound('版块已被关闭');
+                }
+
+                forum['createdAt'] = (forum['createdAt']) ? new Date(forum['createdAt']).getTime() : null;
+                forum['updatedAt'] = (forum['updatedAt']) ? new Date(forum['updatedAt']).getTime() : null;
+
                 result.forum = forum;
+
                 return sails.models.forum.getTopicCount(forum.id);
             })
-            .then(function(topicCount){
+            .then(function (topicCount) {
 
+                var pageSize = parseInt(req.query.pagesize || 10);
+                var pageIndex = parseInt(req.query.page || 1);
+                var pageCount = Math.ceil(topicCount / 10) || 1;
+                pageCount > 200 ? pageCount = 200 : '';
+
+                result.page = {
+                    title: result.forum.name,
+                    page: pageIndex,
+                    size: pageSize,
+                    count: pageCount
+                };
+
+                req.wantType = sails.services.tool.checkWantType(req.params.format);
+                req.cacheKey = 'forum:' + forum.id + ':version:' + pageSize + ':' + pageIndex + req.wantType.suffix;
+
+                // 获得缓存，如果获得失败那么尝试直接获取。
+                sails.services.cache.get(req.cacheKey)
+                    .then(function (cache) {
+                        if (req.wantType.param == 'json') {
+                            return sails.config.jsonp ? res.jsonp(JSON.parse(cache)) : res.json(JSON.parse(cache));
+                        } else {
+                            return res.send(200, cache);
+                        }
+                    })
+                    .catch(function (err) {
+
+                        if (err !== null) {
+                            return res.serverError(err);
+                        }
+
+                        // 获取所有主题帖
+                        sails.models.threads.find()
+                            .where({
+                                forum: result.forum.id,
+                                parent: 0
+                            })
+                            .sort({
+                                updatedAt: 1,
+                                top: 1
+                            })
+                            .paginate({
+                                page: pageIndex,
+                                limit: pageSize
+                            })
+                            .then(function (rawTopics) {
+
+                                var handledTopics = [];
+                                var replyIds = [];
+
+                                _.forEach(rawTopics, function (rawTopic) {
+
+                                    if (rawTopic.recentReply && _.isArray('rawTopic') && rawTopic.recentReply.length > 0) {
+                                        replyIds = replyIds.concat(rawTopic.recentReply);
+                                    }
+
+                                    delete rawTopic['ip'];
+                                    rawTopic['createdAt'] = (rawTopic['createdAt']) ? new Date(rawTopic['createdAt']).getTime() : null;
+                                    rawTopic['updatedAt'] = (rawTopic['updatedAt']) ? new Date(rawTopic['updatedAt']).getTime() : null;
+
+                                    handledTopics.push(rawTopic);
+
+                                });
+
+                                _.forEach(replyIds, function (replyId, i) {
+                                    replyIds[i] = parseInt(replyId);
+                                });
+
+                                if (replyIds.length == 0) {
+                                    return [];
+                                }
+
+                                result.data.threads = handledTopics;
+
+                                // 获取所有回复贴
+                                return sails.models.threads.find()
+                                    .where({
+                                        id: replyIds
+                                    });
+
+                            })
+                            .then(function (rawReplies) {
+
+                                var handledReplies = {};
+
+                                _.forEach(rawReplies, function (rawReply) {
+
+                                    if (!rawReply) {
+                                        return false;
+                                    }
+
+                                    delete rawReply['ip'];
+                                    delete rawReply['recentReply'];
+                                    rawReply['createdAt'] = (rawReply['createdAt']) ? new Date(rawReply['createdAt']).getTime() : null;
+                                    rawReply['updatedAt'] = (rawReply['updatedAt']) ? new Date(rawReply['updatedAt']).getTime() : null;
+
+                                    handledReplies['t' + rawReply.id] = rawReply;
+
+                                });
+
+                                result.data.replies = handledReplies;
+
+                                return result;
+                            })
+                            .then(function (result) {
+                                return res.generateResult(result, {
+                                    desktopView: 'desktop/forum/index',
+                                    mobileView: 'mobile/forum/index'
+                                });
+                            });
+
+                    });
+
+            })
+            .catch(function (err) {
+                return res.serverError(err);
             });
-
-
-        //// 版块
-        //var forum = sails.models.forum.findForumByName(req.params.forum);
-        //
-        //if (!forum) {
-        //    return res.notFound();
-        //}
-        //
-        //// 翻页
-        //var pageIndex = Number(req.query.page) || 1;
-        //var pageCount = Math.ceil(sails.models.forum.list[forum.name]['topicCount'] / 10);
-        //
-        //req.wantType = sails.services.tool.checkWantType(req.params.format);
-        //req.cacheKey = 'forum:' + forum.id + ':' + pageIndex + ':' + req.wantType.suffix;
-        //
-        //sails.services.cache.get(req.cacheKey)
-        //    .then(function (cache) {
-        //
-        //        if (wantType.param == 'json') {
-        //            return sails.config.jsonp ? res.jsonp(JSON.parse(cache)) : res.json(JSON.parse(cache));
-        //        } else if (req.wantType.param == 'xml') {
-        //            res.set('Content-Type', 'text/xml');
-        //        }
-        //
-        //        res.send(200, cache);
-        //
-        //    })
-        //    .fail(function () {
-        //        sails.models.threads.list(forum.id, pageIndex)
-        //            .then(function (data) {
-        //
-        //                var output = {
-        //                    forum: forum,
-        //                    data: data,
-        //                    page: {
-        //                        title: forum.name,
-        //                        size: pageCount,
-        //                        page: pageIndex
-        //                    },
-        //                    code: 200,
-        //                    success: true
-        //                };
-        //
-        //                // 删除不需要的数据 & 转换时间戳
-        //                if (forum) {
-        //                    forum['createdAt'] = (forum['createdAt']) ? new Date(forum['createdAt']).getTime() : null;
-        //                    forum['updatedAt'] = (forum['updatedAt']) ? new Date(forum['updatedAt']).getTime() : null;
-        //                }
-        //
-        //                for (var i in output['data']['threads']) {
-        //                    if (output['data']['threads'][i]) {
-        //                        var data = output['data']['threads'][i];
-        //                        delete data['ip'];
-        //                        delete data['parent'];
-        //                        data['createdAt'] = (data['createdAt']) ? new Date(data['createdAt']).getTime() : null;
-        //                        data['updatedAt'] = (data['updatedAt']) ? new Date(data['updatedAt']).getTime() : null;
-        //                    }
-        //                }
-        //
-        //                for (var i in output['data']['replys']) {
-        //                    if (output['data']['replys'][i]) {
-        //                        var data = output['data']['replys'][i];
-        //                        delete data['ip'];
-        //                        delete data['parent'];
-        //                        delete data['recentReply'];
-        //                        data['createdAt'] = (data['createdAt']) ? new Date(data['createdAt']).getTime() : null;
-        //                        data['updatedAt'] = (data['updatedAt']) ? new Date(data['updatedAt']).getTime() : null;
-        //                    }
-        //                }
-        //
-        //                return res.generateResult(output, {
-        //                    desktopView: 'desktop/forum/index',
-        //                    mobileView: 'mobile/forum/index'
-        //                });
-        //
-        //            })
-        //            .fail(function (err) {
-        //                return res.serverError(err);
-        //            });
-        //    });
-
 
     }
 };
