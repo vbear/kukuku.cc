@@ -18,15 +18,11 @@ module.exports.bootstrap = function (standBy) {
     Promise.promisifyAll(require("redis"));
     global.redis = require('redis');
     global.request = require('request');
-
-    // 将会弃用的库
-    global.Q = require("q");
     global.md5 = require('MD5');
 
     sails.log.ship = null;
     sails.log('--------------------------------------------------------'.grey);
     sails.log.info('AC匿名版 - When i wish upon a star');
-    sails.log('--------------------------------------------------------'.grey);
     sails.log.blank();
 
 

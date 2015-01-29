@@ -35,7 +35,6 @@ module.exports = function badRequest(data) {
 
     var data = {
         data: data,
-        msg:data,
         success: false,
         code: 400
     };
@@ -50,7 +49,6 @@ module.exports = function badRequest(data) {
 //            break;
 
         case 'json':
-            sails.services.cache.set(req.cacheKey, data);
             sails.config.jsonp ? res.jsonp(data) : res.json(data);
             break;
 

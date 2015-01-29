@@ -31,28 +31,20 @@ module.exports = function notFound(data) {
 
     // Log error to console
     if (data !== undefined) {
-        sails.log.verbose('Sending 404 ("Not Found") response: \n', data);
+        sails.log.verbose('Sending 404 ("Not Found") response: \n',req.url, data);
     }
     else sails.log.verbose('Sending 404 ("Not Found") response');
 
     var data = {
         data: data,
-        msg:data,
         success: false,
-        code: 404
+        code: 404,
+        url: req.url
     };
 
     switch (req.wantType.param) {
 
-//        case 'xml':
-//            var html = json2xml(data);
-//            html = '<?xml version="1.0" encoding="UTF-8"?><root>' + html + '</root>';
-//            res.set('Content-Type', 'text/xml');
-//            res.send(200, html);
-//            break;
-
         case 'json':
-            sails.services.cache.set(req.cacheKey, data);
             sails.config.jsonp ? res.jsonp(data) : res.json(data);
             break;
 

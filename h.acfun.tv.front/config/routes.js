@@ -34,10 +34,21 @@ module.exports.routes = {
     '/homepage/switchType':'HomepageController.switchType',
 
     /**
+     * 版块
+     */
+    '/forum/:forum.:format?':'ForumController.index',
+    'post /forum/:forum/create.:format?':'ThreadsController.create',
+
+    /**
      * 串
      */
-    '/t/:tid.:format?':'ThreadsController.index',
-    '/t/:tid/create.:format?':'ThreadsController.create',
+    '/threads/:tid.:format?':'ThreadsController.index',
+    'post /threads/:tid/create.:format?':'ThreadsController.create',
+
+    /**
+     * 上传附件
+     */
+    'post /attachment/upload': 'AttachmentController.upload',
 
     /**
      * 订阅
@@ -47,11 +58,7 @@ module.exports.routes = {
     '/feed/remove.:format?':'FeedController.remove',
     '/feed/check.:format?':'FeedController.check',
 
-    /**
-     * 版块
-     */
-    '/:forum.:format?':'ForumController.index',
-    '/:forum/create.:format?':'ThreadsController.create',
+
 
     /**
      * 功能

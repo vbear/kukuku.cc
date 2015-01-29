@@ -12,6 +12,8 @@ module.exports = {
         host: '10.232.0.13'
     },
 
+    cache: false,
+
     models: {
         migrate: 'safe'
     },

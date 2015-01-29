@@ -24,10 +24,8 @@ module.exports = function serverError(data) {
     // Set status code
     res.status(500);
 
-    // Log error to console
-    sails.log.error('Error Url:',req.url);
     if (data !== undefined) {
-        sails.log.error('Sending 500 ("Server Error") response: \n', data);
+        sails.log.error('Sending 500 ("Server Error") response: \n',req.url, data);
     }
     else sails.log.error('Sending empty 500 ("Server Error") response');
 
@@ -37,22 +35,13 @@ module.exports = function serverError(data) {
 
     var data = {
         data: data,
-        msg:data,
         success: false,
         code: 500
     };
 
     switch (req.wantType.param) {
 
-//        case 'xml':
-//            var html = json2xml(data);
-//            html = '<?xml version="1.0" encoding="UTF-8"?><root>' + html + '</root>';
-//            res.set('Content-Type', 'text/xml');
-//            res.send(200, html);
-//            break;
-
         case 'json':
-            sails.services.cache.set(req.cacheKey, data);
             sails.config.jsonp ? res.jsonp(data) : res.json(data);
             break;
 

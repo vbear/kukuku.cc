@@ -32,7 +32,6 @@ module.exports = function forbidden(data) {
 
     var data = {
         data: data,
-        msg:data,
         success: false,
         code: 403
     };
@@ -47,7 +46,6 @@ module.exports = function forbidden(data) {
 //            break;
 
         case 'json':
-            sails.services.cache.set(req.cacheKey, data);
             sails.config.jsonp ? res.jsonp(data) : res.json(data);
             break;
 

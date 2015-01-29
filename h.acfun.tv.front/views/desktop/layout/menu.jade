@@ -20,7 +20,7 @@ ul#h-menu-content.uk-nav.uk-nav-parent-icon.uk-nav-side(data-uk-nav="{multiple:t
                     a.h-nav-parent-header(href='#' onclick='return false;')= j
                     ul.uk-nav-sub
                         - for(var n in forumList[i][j]){
-                            li: a(href=forumList[i][j][n][1])!=forumList[i][j][n][0]
+                            li: a(href='/forum'+forumList[i][j][n][1])!=forumList[i][j][n][0]
                         - }
             - }
         - } else {

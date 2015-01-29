@@ -10,14 +10,17 @@ module.exports = {
 
     /**
      * 获取版块页面
-     * @route /:forum(.format)?page=?&pagesize=?
+     * @route /forum/:forum(.format)?page=?&pagesize=?
      * @key forum:id:version:pagesize:page:type
      */
     index: function (req, res) {
 
         var result = {
             forum: {},
-            data: {},
+            data: {
+                threads: [],
+                replies: {}
+            },
             page: {},
             code: 200,
             success: true
@@ -56,16 +59,15 @@ module.exports = {
                 };
 
                 req.wantType = sails.services.tool.checkWantType(req.params.format);
-                req.cacheKey = 'forum:' + forum.id + ':version:' + pageSize + ':' + pageIndex + req.wantType.suffix;
+                req.cacheKey = 'forum:' + result.forum.id + ':version:' + pageSize + ':' + pageIndex + req.wantType.suffix;
 
                 // 获得缓存，如果获得失败那么尝试直接获取。
                 sails.services.cache.get(req.cacheKey)
                     .then(function (cache) {
                         if (req.wantType.param == 'json') {
                             return sails.config.jsonp ? res.jsonp(JSON.parse(cache)) : res.json(JSON.parse(cache));
-                        } else {
-                            return res.send(200, cache);
                         }
+                        return res.send(200, cache);
                     })
                     .catch(function (err) {
 
@@ -151,6 +153,9 @@ module.exports = {
                                     desktopView: 'desktop/forum/index',
                                     mobileView: 'mobile/forum/index'
                                 });
+                            })
+                            .catch(function (err) {
+                                return res.serverError(err);
                             });
 
                     });

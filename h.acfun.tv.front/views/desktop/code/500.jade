@@ -1,14 +1,14 @@
 doctype html
 html
     head
+        meta(charset="utf-8")
         title 服务器发生错误 - AC匿名版
-    body
+    body(style="background: #ffe;color: #800000;font-size: 12px;")
         div.uk-container
-        hr
         h2.h-title.uk-text-left 500 - Server Error
         p 服务器发生错误
         if (typeof data !== 'undefined')
-            code
+            pre
                 - _.each(data, function (d) {
                     = d
                 - });

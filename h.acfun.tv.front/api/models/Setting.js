@@ -14,7 +14,7 @@ module.exports = {
             max: 50
         },
         value: {
-            type: 'string'
+            type: 'text'
         }
     },
 

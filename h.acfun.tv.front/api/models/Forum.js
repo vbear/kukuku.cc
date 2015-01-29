@@ -12,7 +12,7 @@ module.exports = {
             required: true
         },
         header: {
-            type: 'string',
+            type: 'text',
             required: true
         },
         lock: {
@@ -56,7 +56,12 @@ module.exports = {
             sails.services.cache.get(aliasesCacheKey)
                 .then(sails.models.forum.findForumByName)
                 .then(resolve)
-                .catch(function () {
+                .catch(function (err) {
+
+                    if(err !== null){
+                        return res.serverError(err);
+                    }
+
                     sails.models.forum.findOne()
                         .where({id: id})
                         .then(function (forum) {

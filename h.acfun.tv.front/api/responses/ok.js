@@ -49,7 +49,6 @@ module.exports = function sendOK(data,etc) {
 //            break;
 
         case 'json':
-            sails.services.cache.set(req.cacheKey, data);
             sails.config.jsonp ? res.jsonp(data) : res.json(data);
             break;
 

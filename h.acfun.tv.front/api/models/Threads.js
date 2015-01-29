@@ -84,66 +84,6 @@ module.exports = {
 
     },
 
-    /**
-     * 普通翻页
-     * @param {int} forumId 版块ID
-     * @param {int} page=1 页数
-     */
-    list: function (forumId, page) {
-
-        var deferred = Q.defer();
-
-        // 页数
-        page = Math.ceil(page);
-
-        sails.models.threads.find()
-            .where({forum: forumId, parent: 0})
-            .sort('updatedAt DESC')
-            .paginate(({page: page, limit: 10}))
-            .then(function (threads) {
-
-                var result = {};
-                result.threads = threads;
-                result.replys = {};
-                var replyIds = [];
-
-                for (var i in threads) {
-                    var item = threads[i];
-                    if (item.recentReply && item.recentReply.length > 0) {
-                        replyIds = replyIds.concat(item.recentReply);
-                    }
-                }
-
-                if (replyIds && replyIds.length > 0) {
-
-                    // 将所有id转为字符串
-                    for (var i in replyIds) {
-                        replyIds[i] = replyIds[i].toString();
-                    }
-
-                    sails.models.threads.find()
-                        .where({
-                            id: replyIds
-                        })
-                        .then(function (replys) {
-                            for (var i in replys) {
-                                result.replys['t' + replys[i].id] = replys[i];
-                            }
-                            deferred.resolve(result);
-                        })
-                        .fail(function (err) {
-                            deferred.reject(err);
-                        });
-                } else {
-                    deferred.resolve(result);
-                }
-            })
-            .fail(function (err) {
-                deferred.reject(err);
-            });
-
-        return deferred.promise;
-    },
 
     /**
      * 获取回复列表
@@ -371,74 +311,7 @@ module.exports = {
         return deferred.promise;
 
 
-    },
-
-    afterCreate: function (newlyInsertedRecord, cb) {
-
-        //通知清除缓存
-        if (newlyInsertedRecord.parent != 0) {
-            sails.services.cache.update('threads:' + newlyInsertedRecord.parent);
-        }
-        sails.services.cache.update('forum:' + newlyInsertedRecord.forum);
-
-        if (newlyInsertedRecord.parent == 0) {
-            sails.models.threads.noticeUpdate(newlyInsertedRecord.forum);
-        }
-
-        cb();
-    },
-
-    afterUpdate: function (updatedRecord, cb) {
-
-        //通知清除缓存
-        if (updatedRecord.parent != 0) {
-            sails.services.cache.update('threads:' + updatedRecord.parent);
-        }
-        if (updatedRecord.parent == 0) {
-            sails.services.cache.update('threads:' + updatedRecord.id);
-        }
-        sails.services.cache.update('forum:' + updatedRecord.forum);
-
-        cb();
-
-    },
-
-    afterDestroy: function (destroyedRecords, cb) {
-
-        if (!Array.isArray(destroyedRecords)) {
-            destroyedRecords = [destroyedRecords]
-        }
-
-        for (var i in destroyedRecords) {
-
-            var destroyedRecord = destroyedRecords[i];
-
-            //通知清除缓存
-            if (destroyedRecord.parent != 0) {
-                sails.services.cache.update('threads:' + destroyedRecord.parent);
-            }
-            if (destroyedRecord.parent == 0) {
-                sails.services.cache.update('threads:' + destroyedRecord.id);
-            }
-            sails.services.cache.update('forum:' + destroyedRecord.forum);
-        }
-
-        cb();
-
-    },
-
-    noticeUpdate: function (forum) {
-        if (ipm2.rpc.msgProcess) {
-            sails.log.silly('try send message to process(h.acfun.tv.front) - threads++ ');
-            ipm2.rpc.msgProcess({
-                name: "h.acfun.tv.front",
-                msg: {type: "h:update:forum:topicCount", forum: forum}
-            }, function (err, res) {
-                if (err) {
-                    sails.log.error(err);
-                }
-            });
-        }
     }
+
 };
 

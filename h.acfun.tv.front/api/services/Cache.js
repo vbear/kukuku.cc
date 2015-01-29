@@ -21,12 +21,13 @@ var cache = {
 
     // 设置缓存
     set: function (key, value, expire) {
+
         return new Promise(function (resolve, reject) {
 
             var rawValue = value;
 
-            if (!key) {
-                return reject('key是一个必填参数');
+            if (!key || !value) {
+                return reject('key/value是一个必填参数');
             }
 
             if (_.isObject(value)) {
@@ -59,6 +60,11 @@ var cache = {
     // 获取缓存
     get: function (key) {
         return new Promise(function (resolve, reject) {
+
+            if(!sails.config.cache){
+                return reject(null);
+            }
+
             cache.version(key)
                 .then(function (version) {
 
