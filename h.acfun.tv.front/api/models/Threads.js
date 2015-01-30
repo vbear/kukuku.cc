@@ -21,8 +21,7 @@ module.exports = {
             defaultsTo: ''
         },
         email: {
-            type: 'string',
-            defaultsTo: ''
+            type: 'email'
         },
         title: {
             type: 'string',
@@ -32,12 +31,10 @@ module.exports = {
             type: 'string'
         },
         image: {
-            type: 'string',
-            defaultsTo: ''
+            model: 'attachment'
         },
         thumb: {
-            type: 'string',
-            defaultsTo: ''
+            model: 'attachment'
         },
         lock: {
             type: 'boolean',
@@ -59,12 +56,7 @@ module.exports = {
             required: true
         },
         forum: {
-            type: 'int',
-            required: true
-        },
-        top: {
-            type: 'int',
-            defaultsTo: 0
+            model: 'forum'
         },
         parent: {
             type: 'int',
@@ -81,7 +73,6 @@ module.exports = {
         updatedAt: {
             type: 'datetime'
         }
-
     },
 
 

@@ -16,19 +16,19 @@ module.exports = {
             type: 'string'
         },
         size: {
-            type: 'int'
+            type: 'integer'
         },
         type: {
             type: 'string'
         },
         width: {
-            type: 'int'
+            type: 'integer'
         },
         height:{
-            type: 'int'
+            type: 'integer'
         },
         url: {
-            type: 'url'
+            type: 'string'
         }
 
     },
@@ -67,9 +67,13 @@ module.exports = {
             uploadedFile.suffix = uploadedFile.filename.replace(/^.*?\.(\w+)$/g, "$1");
 
             if (uploadedFileType == 'image') {
-                return sails.models.attachment.handleImage(uploadedFile);
-            } else if (uploadedFileType == 'video') {
-                return sails.models.attachment.uploadVideo(uploadedFile);
+                return sails.models.attachment.handleImage(uploadedFile)
+                    .then(resolve)
+                    .catch(reject)
+            //} else if (uploadedFileType == 'video') {
+            //    return sails.models.attachment.handleVideo(uploadedFile)
+            //        .then(resolve)
+            //        .catch(reject)
             } else {
                 return reject('只能上传图片或者视频');
             }
@@ -99,7 +103,7 @@ module.exports = {
             var remoteImagePath = sails.config.connections.ftpServer.defaultSaveAs + '/' + remoteImageFilename.substr(0, 2) + '/' + remoteImageFilename.substr(2, 2) + '/' + remoteImageFilename;
             var remoteThumbPath = sails.config.connections.ftpServer.defaultSaveAs + '/' + remoteThumbFilename.substr(0, 2) + '/' + remoteThumbFilename.substr(2, 2) + '/' + remoteThumbFilename;
 
-            sails.models.attachment.getImageSize(uploadedFile)
+            sails.models.attachment.getImageSize(uploadedFile.buffer)
                 .then(function (uploadedFileSize) {
                     uploadedFile.size = uploadedFileSize;
                     if (uploadedFile.useWatermark) {
@@ -117,8 +121,14 @@ module.exports = {
                     }
                     return uploadedFile.buffer;
                 })
-                .then(function (handledThumbBuffer) {
+                .then(function(handledThumbBuffer){
                     uploadedFile.handledThumbBuffer = handledThumbBuffer;
+                    return sails.models.attachment.getImageSize(handledThumbBuffer)
+                })
+                .then(function (handledThumbSize) {
+
+                    uploadedFile.thumbSize = handledThumbSize;
+
                     return sails.services.ftp.upload([
                         {
                             file: uploadedFile.handledImageBuffer,
@@ -131,9 +141,27 @@ module.exports = {
                 })
                 .then(function () {
                     return sails.models.attachment.create([
-
+                        // 源文件
+                        {
+                            filename:remoteImageFilename,
+                            size: uploadedFile.handledImageBuffer.length ,
+                            type: uploadedFile.type,
+                            width:uploadedFile.size.width ,
+                            height:uploadedFile.size.height,
+                            url: remoteImagePath
+                        },
+                        // 缩略图
+                        {
+                            filename:remoteThumbFilename,
+                            size: uploadedFile.handledThumbBuffer.length ,
+                            type: uploadedFile.type,
+                            width:uploadedFile.thumbSize.width ,
+                            height:uploadedFile.thumbSize.height,
+                            url: remoteThumbPath
+                        }
                     ])
                 })
+                .then(resolve)
                 .catch(reject);
         });
     },
@@ -141,10 +169,10 @@ module.exports = {
     /**
      * 获取图片
      */
-    getImageSize: function (uploadedFile) {
+    getImageSize: function (uploadedFileBuffer) {
 
         return new Promise(function (resolve, reject) {
-            var uploadedFileHandler = gm(uploadedFile.buffer);
+            var uploadedFileHandler = gm(uploadedFileBuffer);
             uploadedFileHandler.size(function (err, uploadedFileSize) {
                 err ? reject(err) : resolve(uploadedFileSize);
             });
@@ -186,16 +214,6 @@ module.exports = {
                     err ? reject(err) : resolve(handledThumbBuffer);
                 });
         });
-    },
-
-    /**
-     * 上传视频
-     * @param uploadedFiles object 文件信息
-     */
-    uploadVideo: function (uploadedFiles) {
-
-
     }
-
 
 };

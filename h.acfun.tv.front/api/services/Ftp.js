@@ -3,11 +3,7 @@
  *
  * @description :: 文件上传通用包
  *
- * - put(buffer) 上传文件
- * - list(path) 显示对应路径列表
- * - mkdir(path) 创建文件夹
- * - exist(path) 对应文件/文件夹是否存在
- * - unlink(path) 删除对应文件
+ * WARN: 请连接后一定要主动断开FTP
  */
 var path = require('path');
 var ftp = require('ftp');
