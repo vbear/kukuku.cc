@@ -19,6 +19,9 @@ module.exports.bootstrap = function (standBy) {
     global.redis = require('redis');
     global.request = require('request');
     global.md5 = require('MD5');
+    global.fs = require('fs');
+    global.path = require('path');
+    global.gm = require('gm').subClass({imageMagick: true});
 
     sails.log.ship = null;
     sails.log('--------------------------------------------------------'.grey);

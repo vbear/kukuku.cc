@@ -18,12 +18,15 @@ module.exports = {
         migrate: 'safe'
     },
 
+    watermarkImage : 'D:\\h.acfun.tv.cluster\\h.acfun.tv.front\\assets\\nimingban.watermark.png',
+
     connections: {
         ftpServer: {
             host: '10.232.0.26',
             port: 21,
             user: 'root',
-            password: 'root'
+            password: 'root',
+            defaultSaveAs: '/h/images'
         },
         mysqlServer: {
             adapter: 'sails-mysql',

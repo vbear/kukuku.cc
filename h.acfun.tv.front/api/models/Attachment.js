@@ -5,9 +5,8 @@
  * 附件
  */
 
-var fs = require('fs');
-var path = require('path');
-var gm = require('gm').subClass({imageMagick: true});
+
+
 
 module.exports = {
 
@@ -16,17 +15,17 @@ module.exports = {
         filename: {
             type: 'string'
         },
-        hash: {
-            type: 'string'
-        },
         size: {
             type: 'int'
         },
         type: {
             type: 'string'
         },
-        info: {
-            type: 'object'
+        width: {
+            type: 'int'
+        },
+        height:{
+            type: 'int'
         },
         url: {
             type: 'url'
@@ -39,6 +38,7 @@ module.exports = {
      * TODO: 尽量避免直接使用buffer模式处理，这样可能会造成内存占用增大且难以释放。优先使用file_path进行引用处理。
      * @param uploadedFiles object 文件信息
      * @param useWatermark bool
+     * @returns {Promise}
      */
     upload: function (uploadedFiles, useWatermark) {
 
@@ -60,13 +60,14 @@ module.exports = {
             }
 
             uploadedFile.buffer = uploadedFileBuffer;
-            uploadedFile.md5 = md5(uploadedFileBuffer);
+            // uploadedFile.md5 = md5(uploadedFileBuffer);
             uploadedFile.useWatermark = useWatermark;
 
             var uploadedFileType = uploadedFile.type.split('/')[0];
+            uploadedFile.suffix = uploadedFile.filename.replace(/^.*?\.(\w+)$/g, "$1");
 
             if (uploadedFileType == 'image') {
-                return sails.models.attachment.uploadImage(uploadedFile);
+                return sails.models.attachment.handleImage(uploadedFile);
             } else if (uploadedFileType == 'video') {
                 return sails.models.attachment.uploadVideo(uploadedFile);
             } else {
@@ -79,9 +80,10 @@ module.exports = {
 
     /**
      * 上传图片
-     * @param uploadedFile object 文件信息
+     * @param uploadedFile {object} 文件信息
+     * @returns {Promise}
      */
-    uploadImage: function (uploadedFile) {
+    handleImage: function (uploadedFile) {
 
         return new Promise(function (resolve, reject) {
 
@@ -91,26 +93,99 @@ module.exports = {
             }
 
             // 2. 准备
-            var now = new Date();
-            var imageName = path.basename(uploadedFile.fd.toLowerCase());
-            var remoteImagePath = '/image/' + now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + (now.getDate()+1) + '/' + imageName;
-            var remoteThumbPath = remoteImagePath.replace(/image/,'thumb');
 
-            var uploadedFileHandler = gm(uploadedFile.buffer, imageName)
-                .autoOrient()
-                .noProfile();
+            var remoteImageFilename = sails.services.tool.generateUUID() + '.' + uploadedFile.suffix;
+            var remoteThumbFilename = sails.services.tool.generateUUID() + '.' + uploadedFile.suffix;
+            var remoteImagePath = sails.config.connections.ftpServer.defaultSaveAs + '/' + remoteImageFilename.substr(0, 2) + '/' + remoteImageFilename.substr(2, 2) + '/' + remoteImageFilename;
+            var remoteThumbPath = sails.config.connections.ftpServer.defaultSaveAs + '/' + remoteThumbFilename.substr(0, 2) + '/' + remoteThumbFilename.substr(2, 2) + '/' + remoteThumbFilename;
 
-            // 3. 如果需要添加水印 那么现在添加了，缩略图缩小反正也看不到
-            if(uploadedFile.useWatermark){
-                uploadedFileHandler = uploadedFileHandler.drawText(30, 20, "匿名版\n\rnimingban.com");
-            }
+            sails.models.attachment.getImageSize(uploadedFile)
+                .then(function (uploadedFileSize) {
+                    uploadedFile.size = uploadedFileSize;
+                    if (uploadedFile.useWatermark) {
+                        // gif/尺寸不够默认不加水印
+                        if (!(uploadedFile.suffix == 'gif' || uploadedFile.size.width > 500 || uploadedFile.size.height > 500)) {
+                            return sails.models.attachment.appendImageWatermark(uploadedFile)
+                        }
+                    }
+                    return uploadedFile.buffer;
+                })
+                .then(function (handledImageBuffer) {
+                    uploadedFile.handledImageBuffer = handledImageBuffer;
+                    if (uploadedFile.size.width > 250 || uploadedFile.size.height > 250) {
+                        return sails.models.attachment.generateImageThumb(uploadedFile)
+                    }
+                    return uploadedFile.buffer;
+                })
+                .then(function (handledThumbBuffer) {
+                    uploadedFile.handledThumbBuffer = handledThumbBuffer;
+                    return sails.services.ftp.upload([
+                        {
+                            file: uploadedFile.handledImageBuffer,
+                            path: remoteImagePath
+                        },
+                        {
+                            file: uploadedFile.handledThumbBuffer,
+                            path: remoteThumbPath
+                        }])
+                })
+                .then(function () {
+                    return sails.models.attachment.create([
 
+                    ])
+                })
+                .catch(reject);
+        });
+    },
 
+    /**
+     * 获取图片
+     */
+    getImageSize: function (uploadedFile) {
+
+        return new Promise(function (resolve, reject) {
+            var uploadedFileHandler = gm(uploadedFile.buffer);
+            uploadedFileHandler.size(function (err, uploadedFileSize) {
+                err ? reject(err) : resolve(uploadedFileSize);
+            });
         });
 
+    },
 
+    /**
+     * 为图片生成水印并返回buffer
+     * @param uploadedFile {object} 文件信息
+     * @returns {Promise}
+     */
+    appendImageWatermark: function (uploadedFile) {
+        return new Promise(function (resolve, reject) {
+            var uploadedFileHandler = gm(uploadedFile.buffer);
+            uploadedFileHandler
+                .composite(sails.config.watermarkImage)
+                .gravity('SouthEast')
+                .geometry('+15+10')
+                .toBuffer(function (err, handledImageBuffer) {
+                    err ? reject(err) : resolve(handledImageBuffer);
+                })
+        });
+    },
 
-
+    /**
+     * 为图片生成缩略图并返回
+     * @param uploadedFile {object} 文件信息
+     * @returns {Promise}
+     */
+    generateImageThumb: function (uploadedFile) {
+        return new Promise(function (resolve, reject) {
+            var uploadedFileHandler = gm(uploadedFile.buffer);
+            uploadedFileHandler
+                .geometry(250, 250, '>')
+                .compress('jpeg')
+                .quality(75)
+                .toBuffer(function (err, handledThumbBuffer) {
+                    err ? reject(err) : resolve(handledThumbBuffer);
+                });
+        });
     },
 
     /**
