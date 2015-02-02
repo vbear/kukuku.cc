@@ -36,29 +36,31 @@ module.exports = {
      */
     bind: function(type,openId,accessToken){
 
-        sails.models.oauth.findOrCreate()
-            .populate('user')
-            .where({
-                openType: type,
-                openId: openId
-            })
-            .then(function(OAuthInfo){
-                // 检查是否有绑定user 否则注册一个
-                if(OAuthInfo.user){
-                    return sails.models.user.signUpByOAuth(OAuthInfo)
-                } else {
-                    return OAuthInfo;
-                }
-            })
-            .then(function(OAuthInfo){
-                return sails.models.oauth.update(OAuthInfo.id,{
-                    accessToken: accessToken
-                });
-            })
-            .then(function(OAuthInfo){
-                return res.ok(OAuthInfo.user);
-            })
-            .catch(res.serverError);
+        return new Promise(function (resolve, reject) {
+            sails.models.oauth.findOrCreate()
+                .populate('user')
+                .where({
+                    openType: type,
+                    openId: openId
+                })
+                .then(function(OAuthInfo){
+                    // 检查是否有绑定user 否则注册一个
+                    if(OAuthInfo.user){
+                        return sails.models.user.signUpByOAuth(OAuthInfo)
+                    } else {
+                        return OAuthInfo;
+                    }
+                })
+                .then(function(OAuthInfo){
+                    return sails.models.oauth.update(OAuthInfo.id,{
+                        accessToken: accessToken
+                    });
+                })
+                .then(resolve)
+                .catch(reject);
+        });
+
+
 
     }
 };
