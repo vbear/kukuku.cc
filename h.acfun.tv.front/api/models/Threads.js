@@ -12,8 +12,14 @@ module.exports = {
     autoUpdatedAt: false,
 
     attributes: {
+        uuid: {
+            type: 'string',
+            size: 64,
+            required: true
+        },
         uid: {
             type: 'string',
+            size: 16,
             required: true
         },
         name: {
@@ -59,11 +65,11 @@ module.exports = {
             model: 'forum'
         },
         parent: {
-            type: 'int',
+            type: 'integer',
             defaultsTo: 0
         },
         replyCount: {
-            type: 'int',
+            type: 'integer',
             defaultsTo: 0
         },
         recentReply: {
@@ -75,233 +81,105 @@ module.exports = {
         }
     },
 
-
     /**
-     * 获取回复列表
-     * @param {int} threadsId 贴子ID
-     * @param {int} page=1 页数
+     * 检查主串状态
+     * @param threadsId 串Id
+     * @returns {Promise}
      */
-    getReply: function (threadsId, page) {
+    checkParentThreads: function (threadsId) {
 
-        var deferred = Q.defer();
+        return new Promise(function (resolve, reject) {
 
-        // 页数
-        page = Math.ceil(page);
+            var threads = null;
 
-        sails.models.threads.find()
-            .where({parent: threadsId})
-            .sort('updatedAt ASC')
-            .paginate(({page: page, limit: 20}))
-            .then(function (threads) {
-                deferred.resolve(threads);
-            })
-            .fail(function (err) {
-                deferred.reject(err);
-            });
+            var threadsId = parseInt(threadsId);
 
-        return deferred.promise;
-    },
-
-    uploadAttachment: function (uploadError, uploadedFiles) {
-
-        var deferred = Q.defer();
-
-        if (uploadError) {
-            deferred.reject(uploadError);
-            return deferred.promise;
-        }
-
-        // 0. 如果没有上传文件则直接pass
-        if (!uploadedFiles || uploadedFiles.length == 0) {
-            deferred.resolve({image: '', thumb: ''});
-            return deferred.promise;
-        }
-
-        if (H.settings.allowUpload && H.settings.allowUpload == 'false') {
-            deferred.reject('系统暂时禁止了上传图片，请取消附件再重新发串。');
-            return deferred.promise;
-        }
-
-        var uploadedFile = uploadedFiles[0];
-
-        fs.readFile(uploadedFile.fd, function (readFileError, uploadedFileBuffer) {
-
-            // 0. 就绪,删除原文件
-            fs.unlink(uploadedFile.fd);
-
-            // 1. 初次检查文件类型是否合法
-            if (!/^.*?\.(jpg|jpeg|bmp|gif|png)$/g.test(uploadedFile.filename.toLowerCase())) {
-                deferred.reject('只能上传 jpg|jpeg|bmp|gif|png 类型的文件');
-                return deferred.promise;
+            if (!threadsId) {
+                return reject('threadsId不合法');
             }
 
-            if (readFileError) {
-                deferred.reject(readFileError);
-                return deferred.promise;
-            }
+            sails.models.threads.findOneById(threadsId)
+                .then(function (threads) {
 
-            var imagemd5 = md5(uploadedFileBuffer);
+                    if (!threads) {
+                        return reject('回复的主串不存在或者已被删除');
+                    }
 
-            // 2. 检查是否被屏蔽
-            if (sails.models.filter.test.imagemd5(imagemd5)) {
-                deferred.reject('没有权限');
-                return deferred.promise;
-            }
+                    if (threads.deleted) {
+                        return reject('回复的主串不存在或者已被删除');
+                    }
 
-            // 3. 准备好路径
-            var now = new Date();
-            var imageName = path.basename(uploadedFile.fd.toLowerCase());
-            var remoteImagePath = '/image/' + now.getFullYear() + '-' + now.getMonth() + '-' + now.getDate() + '/' + imageName;
-            var remoteThumbPath = '/thumb/' + now.getFullYear() + '-' + now.getMonth() + '-' + now.getDate() + '/' + imageName;
+                    if (threads.lock) {
+                        return reject('回复的主串已经被锁定');
+                    }
 
-            var uploadedFileGm = gm(uploadedFileBuffer, imageName)
-                .autoOrient()
-                .noProfile();
+                    if (threads.parent) {
+                        return reject('并不允许直接回应子串');
+                    }
 
-            uploadedFileGm.size(function (readFileSizeError, uploadedFileSize) {
+                    return sails.models.forum.findForumById(threads.forum);
 
-                if (readFileSizeError) {
-                    deferred.reject(readFileSizeError);
-                    return deferred.promise;
-                }
-
-                // 4. 已经确认是图片，上传原图到FTP
-                sails.services.ftp.ready()
-                    .then(function (ftpClient) {
-                        // 尝试创建文件夹
-                        ftpClient.mkdir(path.dirname(remoteImagePath), true, function (err) {
-                            ftpClient.put(uploadedFileBuffer, remoteImagePath, function (uploadImageError) {
-
-                                if (uploadImageError) {
-                                    ftpClient.end();
-                                    deferred.reject(uploadImageError);
-                                    return deferred.promise;
-                                }
-
-                                // 5. resize图片
-                                if (uploadedFileSize.width > 250 || uploadedFileSize.height > 250) {
-                                    uploadedFileGm = uploadedFileGm.resize(250, 250);
-                                }
-
-                                uploadedFileGm.toBuffer(function (thumbToBufferError, thumbBuffer) {
-                                    if (thumbToBufferError) {
-                                        ftpClient.end();
-                                        deferred.reject(thumbToBufferError);
-                                        return deferred.promise;
-                                    }
-
-                                    // 6.流程结束 上传到ftp后返回
-                                    ftpClient.mkdir(path.dirname(remoteThumbPath), true, function (mkdirError) {
-                                        ftpClient.put(thumbBuffer, remoteThumbPath, function (uploadThumbError) {
-
-                                            ftpClient.end();
-
-                                            if (uploadThumbError) {
-                                                deferred.reject(uploadThumbError);
-                                                return deferred.promise;
-                                            }
-
-                                            deferred.resolve({image: remoteImagePath, thumb: remoteThumbPath});
-
-                                        });
-                                    });
-
-                                })
-
-                            });
-                        });
-
-                    })
-                    .fail(function (uploadImageError) {
-                        deferred.reject(uploadImageError);
-                        return deferred.promise;
-                    });
-
-            });
+                })
+                .then(function (forum) {
+                    forum.parentThreads = threads;
+                })
+                .catch(reject);
 
         });
-
-
-        return deferred.promise;
     },
 
-    checkParentThreads: function (parent) {
-
-        var deferred = Q.defer();
-
-        if (!parent || parent == 0) {
-            deferred.resolve(null);
-            return deferred.promise;
-        }
-
-        sails.models.threads.findOneById(parent)
-            .then(function (parentThreads) {
-
-                if (!parentThreads) {
-                    deferred.reject('回复的对象不存在');
-                    return deferred.promise;
-                }
-
-                if (parentThreads.lock) {
-                    deferred.reject('主串已经被锁定');
-                    return deferred.promise;
-                }
-
-                deferred.resolve(parentThreads);
-
-            })
-            .fail(function (err) {
-                deferred.reject(err);
-            });
-
-
-        return deferred.promise;
-    },
-
+    /**
+     * 发串时处理父串
+     * @param parentThreads
+     * @param newThreads
+     * @returns {Promise}
+     */
     handleParentThreads: function (parentThreads, newThreads) {
 
-        var deferred = Q.defer();
+        return new Promise(function (resolve, reject) {
 
-        if (!parentThreads) {
-            deferred.resolve(null);
-            return deferred.promise;
-        }
+            if (!parentThreads) {
+                return resolve();
+            }
 
-        var recentReply = parentThreads.recentReply;
+            if (!newThreads) {
+                return reject('意料之外的方法调用');
+            }
 
-        if (!_.isArray(recentReply)) {
-            recentReply = [];
-        }
+            var recentReply = parentThreads.recentReply;
 
-        if (recentReply.length > 4) {
-            recentReply.pop();
-        }
+            if (!_.isArray(recentReply)) {
+                recentReply = [];
+            }
 
-        recentReply.unshift(newThreads.id);
+            if (recentReply.length > 4) {
+                recentReply.pop();
+            }
 
-        var map = {};
-        map['recentReply'] = recentReply;
-        map['replyCount'] = Number(Number(parentThreads['replyCount']) + 1);
+            recentReply.unshift(newThreads.id);
 
-        if (parentThreads.sage || newThreads.sage) {
-            map['updatedAt'] = parentThreads.updatedAt;
-        } else {
-            map['updatedAt'] = new Date();
-        }
+            var map = {};
+            map['recentReply'] = recentReply;
+            map['replyCount'] = Number(Number(parentThreads['replyCount']) + 1);
 
-        sails.models.threads
-            .update({
-                id: parentThreads.id
-            }, map)
-            .then(function () {
-                deferred.resolve(null);
-            }).fail(function (err) {
-                deferred.reject(err);
-            });
+            if (parentThreads.sage) {
+                map['updatedAt'] = parentThreads.updatedAt;
+            } else {
+                map['updatedAt'] = new Date();
+            }
 
-        return deferred.promise;
+            sails.models.threads
+                .update({
+                    id: parentThreads.id
+                }, map)
+                .then(function () {
+                    resolve(null);
+                })
+                .catch(function (err) {
+                    reject(err);
+                });
 
-
+        });
     }
 
 };

@@ -15,9 +15,8 @@ module.exports.bootstrap = function (standBy) {
 
     // Require Lib.
     global.Promise = require("bluebird");
-    Promise.promisifyAll(require("redis"));
-    global.redis = require('redis');
-    global.request = require('request');
+    global.redis = Promise.promisifyAll(require("redis"));
+    global.request = Promise.promisify(require("request"));
     global.md5 = require('MD5');
     global.fs = require('fs');
     global.path = require('path');

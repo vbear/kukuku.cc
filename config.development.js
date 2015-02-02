@@ -18,6 +18,23 @@ module.exports = {
         migrate: 'safe'
     },
 
+    self : {
+        host: 'http://h.nimingban.com'
+    },
+
+    oauth: {
+        weibo: {
+            client_id: '',
+            client_secret: ''
+        },
+        qq: {
+
+        },
+        acfun: {
+
+        }
+    },
+
     watermarkImage : 'D:\\h.acfun.tv.cluster\\h.acfun.tv.front\\assets\\nimingban.watermark.png',
 
     connections: {

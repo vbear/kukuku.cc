@@ -5,9 +5,6 @@
  * 附件
  */
 
-
-
-
 module.exports = {
 
     attributes: {
@@ -29,7 +26,39 @@ module.exports = {
         },
         url: {
             type: 'string'
+        },
+        status: {
+            type: 'integer',
+            defaultTo: 0
         }
+
+    },
+
+
+    /**
+     * 检查附件是否存在
+     * @param attachmentId 附件Id
+     * @returns {Promise}
+     */
+    checkById: function(attachmentId){
+        return new Promise(function (resolve, reject) {
+
+            var attachmentId = parseInt(attachmentId);
+
+            if(!attachmentId){
+                return resolve(false);
+            }
+
+            sails.models.attachment.count()
+                .where({
+                    id:attachmentId
+                })
+                .then(function(count){
+                    count ? resolve(true) : resolve(false);
+                })
+                .catch(reject);
+
+        });
 
     },
 
