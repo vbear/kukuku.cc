@@ -9,23 +9,24 @@ module.exports = {
 
     session: {
         secret: 'd38f989e2dbd315793cb2675d29099a8',
-        host: '10.232.0.13'
+        host: '127.0.0.1'
     },
 
     cache: false,
 
     models: {
-        migrate: 'safe'
+        migrate: 'alter'
     },
 
     self : {
-        host: 'http://h.nimingban.com'
+        host: 'http://kukuku.cc'
     },
 
     oauth: {
         weibo: {
-            client_id: '',
-            client_secret: ''
+            client_id: '4034664504',
+            client_secret: '902c0debbad76b460ebd4e4b8fff6dfc',
+            redirect_uri: 'http://kukuku.cc/user/weibo/signin'
         },
         qq: {
 
@@ -39,7 +40,7 @@ module.exports = {
 
     connections: {
         ftpServer: {
-            host: '10.232.0.26',
+            host: '127.0.0.1',
             port: 21,
             user: 'root',
             password: 'root',
@@ -47,18 +48,18 @@ module.exports = {
         },
         mysqlServer: {
             adapter: 'sails-mysql',
-            host: '10.232.0.26',
+            host: '127.0.0.1',
             user: 'root',
             password: 'root',
-            database: 'h_acfun_tv_v4'
+            database: 'kukuku_cc'
         },
         redisServer: {
-            host: '10.232.0.13',
+            host: '127.0.0.1',
             port: 6379,
             database: 7
         },
         rabbitMQServer: {
-            host: '10.232.0.26',
+            host: '127.0.0.1',
             port: 5672,
             login: 'root',
             password: 'root'

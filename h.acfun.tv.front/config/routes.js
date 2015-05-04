@@ -58,6 +58,11 @@ module.exports.routes = {
     '/feed/remove.:format?':'FeedController.remove',
     '/feed/check.:format?':'FeedController.check',
 
+    /**
+     * 用户登录
+     */
+    '/user/:type/redirect': 'UserController.redirect',
+    '/user/:type/signin': 'UserController.signin',
 
 
     /**

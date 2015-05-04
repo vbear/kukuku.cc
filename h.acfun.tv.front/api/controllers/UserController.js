@@ -9,25 +9,24 @@ module.exports = {
 
     /**
      * 请求引导页
-     * @route /user/jump
+     * @route /user/:type/redirect
      */
-    jump: function (req, res) {
+    redirect: function (req, res) {
 
         var OAuthTimestamp = new Date().getTime();
         req.session.OAuthTimestamp = OAuthTimestamp;
 
-        switch(req.query.type){
+        switch (req.params.type) {
 
             case 'weibo':
-                return res.redirect('https://api.weibo.com/oauth2/authorize?client_id='+sails.config.oauth.weibo.client_id+'&response_type=code&redirect_uri='+encodeURIComponent(sails.config.self.host+'/user/oauth/weibo'));
+                return res.redirect('https://api.weibo.com/oauth2/authorize?client_id='
+                    + sails.config.oauth.weibo.client_id
+                    + '&response_type=code&redirect_uri='
+                    + encodeURIComponent(sails.config.oauth.weibo.redirect_uri));
                 break;
 
             case 'qq':
-                return res.redirect('https://graph.qq.com/oauth2.0/authorize?response_type=code&client_id='+sails.config.oauth.qq.client_id+'&redirect_uri='+encodeURIComponent(sails.config.self.host+'/user/oauth/qq')+'&state='+OAuthTimestamp);
-                break;
-
-            case 'acfun':
-                return res.redirect('https://ssl.acfun.tv/oauth2/authorize.aspx?client_id='+sails.config.oauth.acfun.client_id+'&redirect_uri='+encodeURIComponent(sails.config.self.host+'/user/oauth/acfun')+'&state='+OAuthTimestamp+'&response_type=token&approval_prompt=force')
+                return res.redirect('https://graph.qq.com/oauth2.0/authorize?response_type=code&client_id=' + sails.config.oauth.qq.client_id + '&redirect_uri=' + encodeURIComponent(sails.config.self.host + '/user/oauth/qq') + '&state=' + OAuthTimestamp);
                 break;
 
             default:
@@ -40,29 +39,54 @@ module.exports = {
 
     /**
      * 验证Oauth
+     * @route /user/:type/signin
      */
-    check: {
+    signin: function (req, res) {
 
-        /**
-         * 验证微博
-         * YOUR_REGISTERED_REDIRECT_URI/?code=CODE
-         */
-        weibo: function(req,res){
+        switch (req.params.type) {
 
-            // 1.通过code换取token
-            if(!req.query.code){
-                res.notFound('没有填写验证用的CODE');
-            }
+            case 'weibo':
+                // 1.通过code换取token
+                if (!req.query.code) {
+                    res.notFound('没有填写验证用的CODE');
+                }
 
-            request.get('https://api.weibo.com/oauth2/access_token?client_id='+sails.config.oauth.acfun.client_id+'&client_secret='+sails.config.oauth.acfun.client_secret+'&grant_type=authorization_code&redirect_uri='+sails.config.oauth.weibo.client_id+'&response_type=code&redirect_uri='+encodeURIComponent(sails.config.self.host+'/user/oauth/weibo')+'&code=CODE')
+                request.postAsync('https://api.weibo.com/oauth2/access_token',
+                    {
+                        form: {
+                            'client_id': sails.config.oauth.weibo.client_id,
+                            'client_secret': sails.config.oauth.weibo.client_secret,
+                            'grant_type': 'authorization_code',
+                            'redirect_uri': sails.config.oauth.weibo.redirect_uri,
+                            'code': req.query.code
+                        }
+                    }).then(function (httpResponse) {
 
+                        var response = httpResponse[0];
+                        var data = httpResponse[1];
+
+                        try {
+                            data = JSON.parse(data);
+                        } catch(e) {
+                            // do nothing
+                        }
+
+                        if(response.statusCode != 200){
+                            return res.forbidden(data);
+                        }
+
+                        if(data.access_token){
+                            return
+                        }
+
+                    });
+
+                break;
+
+            default:
+                return res.notFound();
+                break;
         }
-
-        /**
-         * 验证QQ
-         *
-         */
-
     }
 
 };
